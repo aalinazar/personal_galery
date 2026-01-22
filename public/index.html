@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Mind - Local Media Viewer</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖼️</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1 class="app-title">
+                <span class="icon">🖼️</span>
+                Media Mind
+            </h1>
+            <div class="header-controls">
+                <button id="theme-toggle" class="btn-icon" title="Toggle theme">🌙</button>
+                <button id="help-btn" class="btn-icon" title="Help">❓</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Directory Selection -->
+        <section class="directory-section">
+            <div class="directory-input-group">
+                <label for="directory-input" class="directory-label">
+                    📁 Select Directory
+                </label>
+                <div class="directory-input-container">
+                    <input 
+                        type="text" 
+                        id="directory-input" 
+                        class="directory-input" 
+                        placeholder="Enter directory path or click browse..."
+                        spellcheck="false"
+                    >
+                    <button id="browse-btn" class="btn btn-primary">Browse</button>
+                </div>
+                <button id="scan-btn" class="btn btn-success" disabled>Scan Directory</button>
+            </div>
+            
+            <!-- Quick Access Directories -->
+            <div class="quick-access" id="quick-access" style="display: none;">
+                <h3>Quick Access</h3>
+                <div class="quick-access-grid" id="quick-access-grid"></div>
+            </div>
+        </section>
+
+        <!-- Loading Indicator -->
+        <div class="loading" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Scanning directory...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div class="error-message" id="error-message" style="display: none;">
+            <span class="error-icon">⚠️</span>
+            <span class="error-text"></span>
+            <button class="error-close" onclick="hideError()">×</button>
+        </div>
+
+        <!-- Media Info Bar -->
+        <div class="media-info-bar" id="media-info-bar" style="display: none;">
+            <div class="media-info">
+                <span class="directory-path" id="current-directory"></span>
+                <span class="media-count" id="media-count"></span>
+            </div>
+            <div class="view-controls">
+                <select id="sort-select" class="sort-select">
+                    <option value="name">Sort by Name</option>
+                    <option value="date">Sort by Date</option>
+                    <option value="size">Sort by Size</option>
+                    <option value="type">Sort by Type</option>
+                </select>
+                <div class="view-toggle">
+                    <button id="grid-view-btn" class="btn-icon active" title="Grid view">⊞</button>
+                    <button id="list-view-btn" class="btn-icon" title="List view">☰</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Media Grid -->
+        <section class="media-section">
+            <div id="media-grid" class="media-grid">
+                <!-- Media items will be dynamically added here -->
+            </div>
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <div class="empty-icon">📷</div>
+                <h2>No Media Found</h2>
+                <p>Select a directory containing images or videos to get started.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Media Viewer Modal -->
+    <div id="media-viewer" class="media-viewer" style="display: none;">
+        <div class="viewer-container">
+            <div class="viewer-header">
+                <span id="viewer-filename" class="viewer-filename"></span>
+                <div class="viewer-controls">
+                    <button id="viewer-download" class="btn-icon" title="Download">⬇️</button>
+                    <button id="viewer-fullscreen" class="btn-icon" title="Fullscreen">⛶</button>
+                    <button id="viewer-close" class="btn-icon" title="Close">✕</button>
+                </div>
+            </div>
+            <div class="viewer-content">
+                <button id="viewer-prev" class="viewer-nav viewer-prev" title="Previous">‹</button>
+                <div id="viewer-media" class="viewer-media">
+                    <!-- Media will be displayed here -->
+                </div>
+                <button id="viewer-next" class="viewer-nav viewer-next" title="Next">›</button>
+            </div>
+            <div class="viewer-footer">
+                <span id="viewer-info" class="viewer-info"></span>
+                <div class="viewer-actions">
+                    <button id="viewer-slideshow" class="btn-small" title="Slideshow">▶️ Slideshow</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>How to Use Media Mind</h2>
+                <button class="modal-close" onclick="closeHelp()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="help-section">
+                    <h3>📁 Selecting a Directory</h3>
+                    <p>Enter the full path to a directory containing images or videos, or use the Browse button to navigate.</p>
+                </div>
+                <div class="help-section">
+                    <h3>🖼️ Viewing Media</h3>
+                    <p>Click on any thumbnail to open the full media viewer. Use the arrow keys or navigation buttons to browse through media.</p>
+                </div>
+                <div class="help-section">
+                    <h3>⌨️ Keyboard Shortcuts</h3>
+                    <ul>
+                        <li><kbd>←</kbd> / <kbd>→</kbd> - Previous/Next media</li>
+                        <li><kbd>Esc</kbd> - Close viewer</li>
+                        <li><kbd>F</kbd> - Toggle fullscreen</li>
+                        <li><kbd>Space</kbd> - Play/pause video or slideshow</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h3>🎥 Supported Formats</h3>
+                    <p><strong>Images:</strong> JPG, PNG, GIF, BMP, WebP, SVG</p>
+                    <p><strong>Videos:</strong> MP4, WebM, OGG, MOV, AVI, MKV, FLV</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+</body>
+</html>
