@@ -47,32 +47,82 @@ function getMediaType(filename) {
     return 'unknown';
 }
 
-// API endpoint to scan directory for media files
+// Helper function to scan directory recursively
+async function scanDirectoryRecursive(rootPath, maxDepth = 20) {
+    const mediaFiles = [];
+    const queue = [{ dirPath: rootPath, relativePath: '', depth: 0 }];
+    
+    while (queue.length > 0) {
+        const { dirPath, relativePath, depth } = queue.shift();
+        
+        // Skip if we've exceeded max depth
+        if (depth > maxDepth) {
+            console.warn(`Max depth (${maxDepth}) reached at: ${dirPath}`);
+            continue;
+        }
+        
+        try {
+            const items = await fs.readdir(dirPath);
+            
+            for (const item of items) {
+                // Skip hidden files and directories
+                if (item.startsWith('.')) continue;
+                
+                const itemPath = path.join(dirPath, item);
+                const itemRelativePath = relativePath ? path.join(relativePath, item) : item;
+                
+                try {
+                    const stats = await fs.stat(itemPath);
+                    
+                    if (stats.isFile() && isMediaFile(item)) {
+                        mediaFiles.push({
+                            name: item,
+                            path: itemPath,
+                            relativePath: itemRelativePath,
+                            depth: depth,
+                            type: getMediaType(item),
+                            size: stats.size,
+                            modified: stats.mtime,
+                            mimeType: mime.lookup(item) || 'application/octet-stream'
+                        });
+                    } else if (stats.isDirectory()) {
+                        // Add directory to queue for recursive scanning
+                        queue.push({
+                            dirPath: itemPath,
+                            relativePath: itemRelativePath,
+                            depth: depth + 1
+                        });
+                    }
+                } catch (statError) {
+                    // Skip files/directories we can't access
+                    console.warn(`Cannot access ${itemPath}:`, statError.message);
+                    continue;
+                }
+            }
+        } catch (readError) {
+            // Skip directories we can't read
+            console.warn(`Cannot read directory ${dirPath}:`, readError.message);
+            continue;
+        }
+    }
+    
+    return mediaFiles;
+}
+
+// API endpoint to scan directory for media files recursively
 app.post('/api/scan-directory', validatePath, async (req, res) => {
     try {
         const dirPath = req.body.path;
-        const files = await fs.readdir(dirPath);
         
-        const mediaFiles = [];
+        // Use recursive scanning to find all media files
+        const mediaFiles = await scanDirectoryRecursive(dirPath);
         
-        for (const file of files) {
-            const filePath = path.join(dirPath, file);
-            const stats = await fs.stat(filePath);
-            
-            if (stats.isFile() && isMediaFile(file)) {
-                mediaFiles.push({
-                    name: file,
-                    path: filePath,
-                    type: getMediaType(file),
-                    size: stats.size,
-                    modified: stats.mtime,
-                    mimeType: mime.lookup(file) || 'application/octet-stream'
-                });
-            }
-        }
-        
-        // Sort files by name
-        mediaFiles.sort((a, b) => a.name.localeCompare(b.name));
+        // Sort files by relative path first, then by name
+        mediaFiles.sort((a, b) => {
+            const pathCompare = (a.relativePath || '').localeCompare(b.relativePath || '');
+            if (pathCompare !== 0) return pathCompare;
+            return a.name.localeCompare(b.name);
+        });
         
         res.json({
             success: true,
@@ -87,39 +137,6 @@ app.post('/api/scan-directory', validatePath, async (req, res) => {
     }
 });
 
-// API endpoint to get subdirectories
-app.post('/api/get-directories', validatePath, async (req, res) => {
-    try {
-        const dirPath = req.body.path;
-        const items = await fs.readdir(dirPath);
-        
-        const directories = [];
-        
-        for (const item of items) {
-            const itemPath = path.join(dirPath, item);
-            const stats = await fs.stat(itemPath);
-            
-            if (stats.isDirectory() && !item.startsWith('.')) {
-                directories.push({
-                    name: item,
-                    path: itemPath
-                });
-            }
-        }
-        
-        // Sort directories by name
-        directories.sort((a, b) => a.name.localeCompare(b.name));
-        
-        res.json({
-            success: true,
-            directories: directories
-        });
-        
-    } catch (error) {
-        console.error('Error getting directories:', error);
-        res.status(500).json({ error: 'Failed to get directories' });
-    }
-});
 
 // Serve static files from user-selected directories
 app.get('/media/*', (req, res) => {

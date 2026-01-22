@@ -156,7 +156,6 @@ class MediaMind {
                 this.displayMediaFiles();
                 this.showMediaInfo(data.directory, data.count);
                 this.addToQuickAccess(data.directory);
-                this.loadSubdirectories();
             } else {
                 this.showError(data.error || 'Failed to scan directory');
             }
@@ -168,26 +167,6 @@ class MediaMind {
         }
     }
 
-    async loadSubdirectories() {
-        if (!this.currentDirectory) return;
-
-        try {
-            const response = await fetch('/api/get-directories', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ path: this.currentDirectory }),
-            });
-
-            const data = await response.json();
-            if (data.success && data.directories.length > 0) {
-                this.displayQuickAccess(data.directories);
-            }
-        } catch (error) {
-            console.error('Error loading subdirectories:', error);
-        }
-    }
 
     displayMediaFiles() {
         const sortedFiles = this.sortMediaFiles(this.mediaFiles, this.sortBy);
@@ -226,9 +205,19 @@ class MediaMind {
             `;
         }
 
+        // Show folder context if file is in a subdirectory
+        let folderInfo = '';
+        if (file.relativePath && file.relativePath !== file.name) {
+            const folderPath = file.relativePath.substring(0, file.relativePath.lastIndexOf('/') || file.relativePath.lastIndexOf('\\'));
+            if (folderPath) {
+                folderInfo = `<div class="media-folder">📁 ${folderPath}</div>`;
+            }
+        }
+
         content += `
             <div class="media-info-overlay">
                 <div class="media-filename">${file.name}</div>
+                ${folderInfo}
             </div>
         `;
 

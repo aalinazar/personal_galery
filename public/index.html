@@ -43,11 +43,6 @@
                 <button id="scan-btn" class="btn btn-success" disabled>Scan Directory</button>
             </div>
             
-            <!-- Quick Access Directories -->
-            <div class="quick-access" id="quick-access" style="display: none;">
-                <h3>Quick Access</h3>
-                <div class="quick-access-grid" id="quick-access-grid"></div>
-            </div>
         </section>
 
         <!-- Loading Indicator -->
@@ -133,7 +128,8 @@
             <div class="modal-body">
                 <div class="help-section">
                     <h3>📁 Selecting a Directory</h3>
-                    <p>Enter the full path to a directory containing images or videos, or use the Browse button to navigate.</p>
+                    <p>Enter the full path to a directory containing images or videos, or use the Browse button to navigate. The application will automatically scan all subdirectories recursively to find every media file.</p>
+                    <p><strong>Note:</strong> All media files from subdirectories will be displayed together in a single view. Folder information is shown with each file to indicate its location.</p>
                 </div>
                 <div class="help-section">
                     <h3>🖼️ Viewing Media</h3>
