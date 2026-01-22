@@ -1,5 +1,5 @@
-// Media Mind - Frontend Application
-class MediaMind {
+// Personal Galery - Frontend Application
+class PersonalGalery {
     constructor() {
         this.currentDirectory = '';
         this.mediaFiles = [];
@@ -557,5 +557,5 @@ function closeHelp() {
 
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new MediaMind();
+    new PersonalGalery();
 });

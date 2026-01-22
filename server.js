@@ -180,7 +180,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`Media Mind server running on http://localhost:${PORT}`);
+    console.log(`Personal Galery server running on http://localhost:${PORT}`);
     console.log('Open your browser and navigate to http://localhost:3000');
 });
 

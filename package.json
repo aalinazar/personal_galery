@@ -1,5 +1,5 @@
 {
-  "name": "media-mind",
+  "name": "personal-galery",
   "version": "1.0.0",
   "description": "A web application for viewing images and videos from local directories",
   "main": "server.js",
