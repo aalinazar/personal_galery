@@ -1,3 +1,7 @@
 .clinerules
 memory-bank/*
 
+# Database files
+*.db
+personal_gallery.db
+  +++++++ REPLACE
