@@ -65,6 +65,7 @@ class PersonalGalery {
         this.selectDirectoryBtn = document.getElementById('select-directory-btn');
         this.currentBrowsePath = '';
         this.selectedDirectory = '';
+        this.clickTimeout = null;
     }
 
     bindEvents() {
@@ -217,15 +218,37 @@ class PersonalGalery {
         
         item.addEventListener('click', () => {
             if (isParent) {
-                // Navigate to parent directory
+                // Navigate to parent directory immediately
                 this.loadDirectories(directory.path);
             } else {
-                // Select this directory
-                this.selectDirectory(directory.path, item);
+                // Handle single-click with potential double-click detection
+                this.handleDirectoryClick(directory.path, item);
             }
         });
         
+        // Add double-click for regular directories only
+        if (!isParent) {
+            item.addEventListener('dblclick', (e) => {
+                e.preventDefault(); // Prevent any default double-click behavior
+                this.loadDirectories(directory.path);
+            });
+        }
+        
         return item;
+    }
+
+    handleDirectoryClick(path, element) {
+        // Clear any existing timeout
+        if (this.clickTimeout) {
+            clearTimeout(this.clickTimeout);
+            this.clickTimeout = null;
+        }
+        
+        // Set a timeout for single-click action
+        this.clickTimeout = setTimeout(() => {
+            this.selectDirectory(path, element);
+            this.clickTimeout = null;
+        }, 200); // 200ms delay to detect potential double-click
     }
 
     selectDirectory(path, element) {
