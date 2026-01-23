@@ -47,6 +47,122 @@ function getMediaType(filename) {
     return 'unknown';
 }
 
+// Helper function to detect available drives on the system
+async function getAvailableDrives() {
+    const drives = [];
+    const platform = process.platform;
+    
+    try {
+        if (platform === 'win32') {
+            // Windows: Check drive letters A-Z
+            for (let i = 65; i <= 90; i++) {
+                const driveLetter = String.fromCharCode(i) + ':\\';
+                try {
+                    if (fs.existsSync(driveLetter)) {
+                        const stats = fs.statSync(driveLetter);
+                        let driveInfo = {
+                            letter: driveLetter,
+                            name: `Drive ${String.fromCharCode(i)}`,
+                            path: driveLetter,
+                            type: 'unknown',
+                            size: 0,
+                            free: 0
+                        };
+                        
+                        // Try to get more detailed drive information
+                        try {
+                            // On Windows, we can try to get volume information
+                            const drivePaths = [driveLetter, driveLetter + '\\'];
+                            for (const testPath of drivePaths) {
+                                try {
+                                    const testStats = fs.statSync(testPath);
+                                    driveInfo = {
+                                        ...driveInfo,
+                                        name: `Local Disk (${String.fromCharCode(i)})`,
+                                        type: 'hdd'
+                                    };
+                                    break;
+                                } catch (e) {
+                                    // Continue to next path
+                                }
+                            }
+                        } catch (error) {
+                            // Keep basic info if detailed check fails
+                        }
+                        
+                        drives.push(driveInfo);
+                    }
+                } catch (error) {
+                    // Skip inaccessible drives
+                    continue;
+                }
+            }
+        } else {
+            // Unix-like systems (macOS, Linux)
+            const rootPaths = ['/'];
+            
+            // On macOS, also check /Volumes
+            if (platform === 'darwin') {
+                rootPaths.push('/Volumes');
+            }
+            
+            for (const rootPath of rootPaths) {
+                try {
+                    if (fs.existsSync(rootPath)) {
+                        const stats = fs.statSync(rootPath);
+                        const driveInfo = {
+                            letter: rootPath,
+                            name: rootPath === '/' ? 'Root Filesystem' : 'Volumes',
+                            path: rootPath,
+                            type: 'hdd',
+                            size: 0,
+                            free: 0
+                        };
+                        
+                        drives.push(driveInfo);
+                        
+                        // If this is /Volumes on macOS, list the mounted volumes
+                        if (rootPath === '/Volumes') {
+                            try {
+                                const volumes = fs.readdirSync('/Volumes');
+                                for (const volume of volumes) {
+                                    if (!volume.startsWith('.')) {
+                                        const volumePath = path.join('/Volumes', volume);
+                                        try {
+                                            if (fs.statSync(volumePath).isDirectory()) {
+                                                drives.push({
+                                                    letter: volumePath,
+                                                    name: volume,
+                                                    path: volumePath,
+                                                    type: 'hdd',
+                                                    size: 0,
+                                                    free: 0
+                                                });
+                                            }
+                                        } catch (error) {
+                                            // Skip inaccessible volumes
+                                            continue;
+                                        }
+                                    }
+                                }
+                            } catch (error) {
+                                // Can't read volumes, continue
+                            }
+                        }
+                    }
+                } catch (error) {
+                    // Skip inaccessible paths
+                    continue;
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error detecting drives:', error);
+    }
+    
+    return drives;
+}
+
 // Helper function to scan directory recursively
 async function scanDirectoryRecursive(rootPath, maxDepth = 20) {
     const mediaFiles = [];
@@ -137,6 +253,23 @@ app.post('/api/scan-directory', validatePath, async (req, res) => {
     }
 });
 
+
+// API endpoint to list available drives
+app.get('/api/list-drives', async (req, res) => {
+    try {
+        const drives = await getAvailableDrives();
+        
+        res.json({
+            success: true,
+            drives: drives,
+            count: drives.length
+        });
+        
+    } catch (error) {
+        console.error('Error listing drives:', error);
+        res.status(500).json({ error: 'Failed to list drives' });
+    }
+});
 
 // API endpoint to list directories for browsing
 app.post('/api/list-directories', validatePath, async (req, res) => {

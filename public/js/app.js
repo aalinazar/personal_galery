@@ -139,20 +139,37 @@ class PersonalGalery {
         // Start with current directory value if it exists and is valid, otherwise use a default
         let startPath = this.directoryInput.value.trim();
         
-        // If current path doesn't exist, use a reasonable default
+        // If current path doesn't exist, start at drives view
         if (!startPath) {
-            // Try to determine OS and use appropriate default
-            const isWindows = navigator.platform.toLowerCase().includes('win');
-            if (isWindows) {
-                startPath = 'C:\\';
-            } else {
-                startPath = '/';
-            }
+            this.currentBrowsePath = 'drives';
+            await this.loadDrives();
+        } else {
+            this.currentBrowsePath = startPath;
+            await this.loadDirectories(startPath);
         }
         
-        this.currentBrowsePath = startPath;
-        await this.loadDirectories(startPath);
         this.directoryBrowserModal.style.display = 'flex';
+    }
+
+    async loadDrives() {
+        try {
+            this.directoryList.innerHTML = '<div class="loading">Loading drives...</div>';
+            this.currentPathDisplay.textContent = 'Drives';
+            
+            const response = await fetch('/api/list-drives');
+            const data = await response.json();
+
+            if (data.success) {
+                this.displayDrives(data.drives);
+                this.selectedDirectory = '';
+                this.selectDirectoryBtn.disabled = true;
+            } else {
+                this.directoryList.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--danger-color);">Error: ${data.error}</div>`;
+            }
+        } catch (error) {
+            console.error('Error loading drives:', error);
+            this.directoryList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--danger-color);">Failed to load drives</div>';
+        }
     }
 
     async loadDirectories(path) {
@@ -184,6 +201,20 @@ class PersonalGalery {
         }
     }
 
+    displayDrives(drives) {
+        this.directoryList.innerHTML = '';
+        
+        if (drives.length === 0) {
+            this.directoryList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">No drives found</div>';
+            return;
+        }
+        
+        drives.forEach(drive => {
+            const item = this.createDriveItem(drive);
+            this.directoryList.appendChild(item);
+        });
+    }
+
     displayDirectories(directories, parentPath) {
         this.directoryList.innerHTML = '';
         
@@ -206,6 +237,33 @@ class PersonalGalery {
         if (directories.length === 0 && !parentPath) {
             this.directoryList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">No subdirectories found</div>';
         }
+    }
+
+    createDriveItem(drive) {
+        const item = document.createElement('div');
+        item.className = 'directory-item drive-item';
+        
+        // Get drive icon based on type or letter
+        let driveIcon = '💾';
+        if (drive.type === 'ssd') driveIcon = '🔹';
+        else if (drive.type === 'cd') driveIcon = '💿';
+        else if (drive.type === 'network') driveIcon = '🌐';
+        else if (drive.letter.includes('/')) driveIcon = '📀'; // Unix-like
+        
+        item.innerHTML = `
+            <span class="directory-icon drive-icon">${driveIcon}</span>
+            <div class="drive-info">
+                <span class="directory-name drive-name">${drive.name}</span>
+                <span class="drive-letter">${drive.letter}</span>
+            </div>
+        `;
+        
+        // Handle drive click - navigate to the drive
+        item.addEventListener('click', () => {
+            this.loadDirectories(drive.path);
+        });
+        
+        return item;
     }
 
     createDirectoryItem(directory, isParent) {

@@ -765,6 +765,45 @@ body {
   color: white;
 }
 
+.directory-item.drive-item {
+  position: relative;
+  border: 1px solid var(--border-color);
+  margin-bottom: 0.5rem;
+}
+
+.directory-item.drive-item:hover {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.drive-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  width: 2rem;
+  text-align: center;
+}
+
+.drive-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.drive-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.drive-letter {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  font-family: monospace;
+}
+
 .directory-icon {
   font-size: 1.2rem;
   flex-shrink: 0;
