@@ -57,6 +57,14 @@ class PersonalGalery {
         this.themeToggle = document.getElementById('theme-toggle');
         this.helpBtn = document.getElementById('help-btn');
         this.helpModal = document.getElementById('help-modal');
+        
+        // Directory browser
+        this.directoryBrowserModal = document.getElementById('directory-browser-modal');
+        this.currentPathDisplay = document.getElementById('current-path-display');
+        this.directoryList = document.getElementById('directory-list');
+        this.selectDirectoryBtn = document.getElementById('select-directory-btn');
+        this.currentBrowsePath = '';
+        this.selectedDirectory = '';
     }
 
     bindEvents() {
@@ -96,6 +104,16 @@ class PersonalGalery {
                 this.closeHelp();
             }
         });
+        
+        // Directory browser close on background click
+        this.directoryBrowserModal.addEventListener('click', (e) => {
+            if (e.target === this.directoryBrowserModal) {
+                this.closeDirectoryBrowser();
+            }
+        });
+        
+        // Directory browser buttons
+        this.selectDirectoryBtn.addEventListener('click', () => this.confirmDirectorySelection());
     }
 
     initializeTheme() {
@@ -117,13 +135,123 @@ class PersonalGalery {
     }
 
     async browseDirectory() {
-        // In a real browser environment, we'd use the File System Access API
-        // For now, we'll show a prompt for the directory path
-        const path = prompt('Enter the full path to your media directory:');
-        if (path && path.trim()) {
-            this.directoryInput.value = path.trim();
-            this.validateDirectoryInput();
+        // Start with current directory value if it exists and is valid, otherwise use a default
+        let startPath = this.directoryInput.value.trim();
+        
+        // If current path doesn't exist, use a reasonable default
+        if (!startPath) {
+            // Try to determine OS and use appropriate default
+            const isWindows = navigator.platform.toLowerCase().includes('win');
+            if (isWindows) {
+                startPath = 'C:\\';
+            } else {
+                startPath = '/';
+            }
         }
+        
+        this.currentBrowsePath = startPath;
+        await this.loadDirectories(startPath);
+        this.directoryBrowserModal.style.display = 'flex';
+    }
+
+    async loadDirectories(path) {
+        try {
+            this.directoryList.innerHTML = '<div class="loading">Loading directories...</div>';
+            
+            const response = await fetch('/api/list-directories', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ path }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.currentBrowsePath = data.currentPath;
+                this.displayDirectories(data.directories, data.parentPath);
+                this.currentPathDisplay.textContent = data.currentPath;
+                this.selectedDirectory = '';
+                this.selectDirectoryBtn.disabled = true;
+            } else {
+                this.directoryList.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--danger-color);">Error: ${data.error}</div>`;
+            }
+        } catch (error) {
+            console.error('Error loading directories:', error);
+            this.directoryList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--danger-color);">Failed to load directories</div>';
+        }
+    }
+
+    displayDirectories(directories, parentPath) {
+        this.directoryList.innerHTML = '';
+        
+        // Add parent directory option if it exists
+        if (parentPath) {
+            const parentItem = this.createDirectoryItem({
+                name: '.. (Parent Directory)',
+                path: parentPath
+            }, true);
+            this.directoryList.appendChild(parentItem);
+        }
+        
+        // Add directories
+        directories.forEach(dir => {
+            const item = this.createDirectoryItem(dir, false);
+            this.directoryList.appendChild(item);
+        });
+        
+        // Show message if no directories found
+        if (directories.length === 0 && !parentPath) {
+            this.directoryList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">No subdirectories found</div>';
+        }
+    }
+
+    createDirectoryItem(directory, isParent) {
+        const item = document.createElement('div');
+        item.className = isParent ? 'directory-item parent-directory-item' : 'directory-item';
+        item.innerHTML = `
+            <span class="directory-icon">📁</span>
+            <span class="directory-name">${directory.name}</span>
+        `;
+        
+        item.addEventListener('click', () => {
+            if (isParent) {
+                // Navigate to parent directory
+                this.loadDirectories(directory.path);
+            } else {
+                // Select this directory
+                this.selectDirectory(directory.path, item);
+            }
+        });
+        
+        return item;
+    }
+
+    selectDirectory(path, element) {
+        // Remove previous selection
+        document.querySelectorAll('.directory-item.selected').forEach(item => {
+            item.classList.remove('selected');
+        });
+        
+        // Add selection to clicked item
+        element.classList.add('selected');
+        this.selectedDirectory = path;
+        this.selectDirectoryBtn.disabled = false;
+    }
+
+    confirmDirectorySelection() {
+        if (this.selectedDirectory) {
+            this.directoryInput.value = this.selectedDirectory;
+            this.validateDirectoryInput();
+            this.closeDirectoryBrowser();
+        }
+    }
+
+    closeDirectoryBrowser() {
+        this.directoryBrowserModal.style.display = 'none';
+        this.selectedDirectory = '';
+        this.selectDirectoryBtn.disabled = true;
     }
 
     validateDirectoryInput() {
@@ -553,6 +681,11 @@ function hideError() {
 // Global function for closing help modal
 function closeHelp() {
     document.getElementById('help-modal').style.display = 'none';
+}
+
+// Global function for closing directory browser modal
+function closeDirectoryBrowser() {
+    document.getElementById('directory-browser-modal').style.display = 'none';
 }
 
 // Initialize the application when DOM is loaded

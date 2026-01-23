@@ -138,6 +138,63 @@ app.post('/api/scan-directory', validatePath, async (req, res) => {
 });
 
 
+// API endpoint to list directories for browsing
+app.post('/api/list-directories', validatePath, async (req, res) => {
+    try {
+        const dirPath = req.body.path;
+        const directories = [];
+        
+        try {
+            const items = await fs.promises.readdir(dirPath, { withFileTypes: true });
+            
+            for (const item of items) {
+                // Skip hidden files and directories
+                if (item.name.startsWith('.')) continue;
+                
+                try {
+                    if (item.isDirectory()) {
+                        const fullPath = path.join(dirPath, item.name);
+                        directories.push({
+                            name: item.name,
+                            path: fullPath
+                        });
+                    }
+                } catch (statError) {
+                    // Skip directories we can't access
+                    console.warn(`Cannot access ${item.name}:`, statError.message);
+                    continue;
+                }
+            }
+            
+            // Sort directories alphabetically
+            directories.sort((a, b) => a.name.localeCompare(b.name));
+            
+            // Get parent directory path
+            const parentPath = path.dirname(dirPath);
+            const hasParent = parentPath !== dirPath;
+            
+            res.json({
+                success: true,
+                currentPath: dirPath,
+                parentPath: hasParent ? parentPath : null,
+                directories: directories
+            });
+            
+        } catch (readError) {
+            console.error('Error reading directory:', readError);
+            res.json({
+                success: false,
+                error: `Cannot access directory: ${readError.message}`
+            });
+        }
+        
+    } catch (error) {
+        console.error('Error listing directories:', error);
+        res.status(500).json({ error: 'Failed to list directories' });
+    }
+});
+
+
 // Serve static files from user-selected directories
 app.get('/media/*', (req, res) => {
     const filePath = decodeURIComponent(req.params[0]);
