@@ -8,11 +8,14 @@ class PersonalGalery {
         this.sortBy = 'name';
         this.isSlideshow = false;
         this.slideshowInterval = null;
+        this.currentAlbum = null;
+        this.albums = [];
         
         this.initializeElements();
         this.bindEvents();
         this.initializeTheme();
         this.loadQuickAccess();
+        this.loadAlbums();
     }
 
     initializeElements() {
@@ -66,6 +69,35 @@ class PersonalGalery {
         this.currentBrowsePath = '';
         this.selectedDirectory = '';
         this.clickTimeout = null;
+        
+        // Navigation tabs
+        this.mediaTab = document.getElementById('media-tab');
+        this.albumsTab = document.getElementById('albums-tab');
+        this.mediaSection = document.getElementById('media-section');
+        this.albumsSection = document.getElementById('albums-section');
+        
+        // Albums
+        this.albumsGrid = document.getElementById('albums-grid');
+        this.albumsCount = document.getElementById('albums-count');
+        this.createAlbumBtn = document.getElementById('create-album-btn');
+        this.albumsEmptyState = document.getElementById('albums-empty-state');
+        
+        // Album modals
+        this.createAlbumModal = document.getElementById('create-album-modal');
+        this.albumDetailModal = document.getElementById('album-detail-modal');
+        this.albumNameInput = document.getElementById('album-name');
+        this.albumDescriptionInput = document.getElementById('album-description');
+        this.saveAlbumBtn = document.getElementById('save-album-btn');
+        this.editAlbumNameInput = document.getElementById('edit-album-name');
+        this.editAlbumDescriptionInput = document.getElementById('edit-album-description');
+        this.updateAlbumBtn = document.getElementById('update-album-btn');
+        this.deleteAlbumBtn = document.getElementById('delete-album-btn');
+        this.addMediaToAlbumBtn = document.getElementById('add-media-to-album-btn');
+        this.albumDetailTitle = document.getElementById('album-detail-title');
+        this.albumMediaCount = document.getElementById('album-media-count');
+        this.albumCreatedDate = document.getElementById('album-created-date');
+        this.albumMediaGrid = document.getElementById('album-media-grid');
+        this.albumMediaEmpty = document.getElementById('album-media-empty');
     }
 
     bindEvents() {
@@ -115,6 +147,34 @@ class PersonalGalery {
         
         // Directory browser buttons
         this.selectDirectoryBtn.addEventListener('click', () => this.confirmDirectorySelection());
+        
+        // Navigation tabs
+        this.mediaTab.addEventListener('click', () => this.switchTab('media'));
+        this.albumsTab.addEventListener('click', () => this.switchTab('albums'));
+        
+        // Album management
+        this.createAlbumBtn.addEventListener('click', () => this.showCreateAlbumModal());
+        this.saveAlbumBtn.addEventListener('click', () => this.createAlbum());
+        this.updateAlbumBtn.addEventListener('click', () => this.updateAlbum());
+        this.deleteAlbumBtn.addEventListener('click', () => this.deleteAlbum());
+        this.addMediaToAlbumBtn.addEventListener('click', () => this.showAddMediaModal());
+        
+        // Modal close events
+        this.createAlbumModal.addEventListener('click', (e) => {
+            if (e.target === this.createAlbumModal) {
+                this.closeCreateAlbumModal();
+            }
+        });
+        
+        this.albumDetailModal.addEventListener('click', (e) => {
+            if (e.target === this.albumDetailModal) {
+                this.closeAlbumDetailModal();
+            }
+        });
+        
+        // Form validation
+        this.albumNameInput.addEventListener('input', () => this.validateAlbumForm());
+        this.editAlbumNameInput.addEventListener('input', () => this.validateAlbumForm());
     }
 
     initializeTheme() {
@@ -752,6 +812,391 @@ class PersonalGalery {
         
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
+
+    // Album Management Methods
+    switchTab(tab) {
+        if (tab === 'media') {
+            this.mediaTab.classList.add('active');
+            this.albumsTab.classList.remove('active');
+            this.mediaSection.classList.add('active');
+            this.albumsSection.classList.remove('active');
+        } else if (tab === 'albums') {
+            this.mediaTab.classList.remove('active');
+            this.albumsTab.classList.add('active');
+            this.mediaSection.classList.remove('active');
+            this.albumsSection.classList.add('active');
+            this.loadAlbums();
+        }
+    }
+
+    async loadAlbums() {
+        try {
+            const response = await fetch('/api/albums');
+            const data = await response.json();
+
+            if (data.success) {
+                this.albums = data.albums;
+                this.displayAlbums();
+                this.updateAlbumsCount();
+            } else {
+                this.showError('Failed to load albums');
+            }
+        } catch (error) {
+            console.error('Error loading albums:', error);
+            this.showError('Failed to connect to server');
+        }
+    }
+
+    displayAlbums() {
+        if (this.albums.length === 0) {
+            this.albumsEmptyState.style.display = 'block';
+            this.albumsGrid.style.display = 'none';
+            return;
+        }
+
+        this.albumsEmptyState.style.display = 'none';
+        this.albumsGrid.style.display = 'grid';
+        this.albumsGrid.innerHTML = '';
+
+        this.albums.forEach(album => {
+            const albumItem = this.createAlbumItem(album);
+            this.albumsGrid.appendChild(albumItem);
+        });
+    }
+
+    createAlbumItem(album) {
+        const item = document.createElement('div');
+        item.className = 'album-item';
+        item.dataset.albumId = album.id;
+
+        // Create album cover (use first media item or placeholder)
+        let coverContent = '';
+        if (album.media_count > 0) {
+            // For now, show placeholder - in future we could load actual thumbnail
+            coverContent = '<div class="album-cover-empty">📷</div>';
+        } else {
+            coverContent = '<div class="album-cover-empty">📚</div>';
+        }
+
+        const createdDate = new Date(album.created_date).toLocaleDateString();
+
+        item.innerHTML = `
+            <div class="album-cover">
+                ${coverContent}
+            </div>
+            <div class="album-info">
+                <div class="album-name">${album.name}</div>
+                <div class="album-description">${album.description || 'No description'}</div>
+                <div class="album-meta">
+                    <span class="album-media-count">${album.media_count} media ${album.media_count === 1 ? 'item' : 'items'}</span>
+                    <div class="album-actions">
+                        <button class="album-action-btn" onclick="app.editAlbum(${album.id})">✏️</button>
+                        <button class="album-action-btn" onclick="app.viewAlbum(${album.id})">👁️</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        item.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('album-action-btn')) {
+                this.viewAlbum(album.id);
+            }
+        });
+
+        return item;
+    }
+
+    updateAlbumsCount() {
+        const totalAlbums = this.albums.length;
+        const totalMedia = this.albums.reduce((sum, album) => sum + album.media_count, 0);
+        this.albumsCount.textContent = `${totalAlbums} album${totalAlbums !== 1 ? 's' : ''} • ${totalMedia} total media ${totalMedia === 1 ? 'item' : 'items'}`;
+    }
+
+    showCreateAlbumModal() {
+        this.albumNameInput.value = '';
+        this.albumDescriptionInput.value = '';
+        this.saveAlbumBtn.disabled = true;
+        this.createAlbumModal.style.display = 'flex';
+        this.albumNameInput.focus();
+    }
+
+    closeCreateAlbumModal() {
+        this.createAlbumModal.style.display = 'none';
+    }
+
+    validateAlbumForm() {
+        const nameValid = this.albumNameInput.value.trim().length > 0;
+        this.saveAlbumBtn.disabled = !nameValid;
+    }
+
+    async createAlbum() {
+        const name = this.albumNameInput.value.trim();
+        const description = this.albumDescriptionInput.value.trim();
+
+        if (!name) {
+            this.showError('Album name is required');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/albums', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name, description }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.closeCreateAlbumModal();
+                this.loadAlbums();
+                this.showSuccess('Album created successfully');
+            } else {
+                this.showError(data.error || 'Failed to create album');
+            }
+        } catch (error) {
+            console.error('Error creating album:', error);
+            this.showError('Failed to connect to server');
+        }
+    }
+
+    async viewAlbum(albumId) {
+        try {
+            const response = await fetch(`/api/albums/${albumId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                this.currentAlbum = data.album;
+                this.showAlbumDetailModal();
+            } else {
+                this.showError(data.error || 'Failed to load album');
+            }
+        } catch (error) {
+            console.error('Error loading album:', error);
+            this.showError('Failed to connect to server');
+        }
+    }
+
+    async editAlbum(albumId) {
+        await this.viewAlbum(albumId);
+        // The modal will open with edit mode enabled
+    }
+
+    showAlbumDetailModal() {
+        if (!this.currentAlbum) return;
+
+        this.albumDetailTitle.textContent = this.currentAlbum.name;
+        this.editAlbumNameInput.value = this.currentAlbum.name;
+        this.editAlbumDescriptionInput.value = this.currentAlbum.description || '';
+        
+        const createdDate = new Date(this.currentAlbum.created_date).toLocaleDateString();
+        this.albumCreatedDate.textContent = `Created: ${createdDate}`;
+        this.albumMediaCount.textContent = `${this.currentAlbum.media ? this.currentAlbum.media.length : 0} media items`;
+
+        this.displayAlbumMedia();
+        this.albumDetailModal.style.display = 'flex';
+    }
+
+    closeAlbumDetailModal() {
+        this.albumDetailModal.style.display = 'none';
+        this.currentAlbum = null;
+    }
+
+    displayAlbumMedia() {
+        if (!this.currentAlbum || !this.currentAlbum.media || this.currentAlbum.media.length === 0) {
+            this.albumMediaGrid.style.display = 'none';
+            this.albumMediaEmpty.style.display = 'block';
+            return;
+        }
+
+        this.albumMediaGrid.style.display = 'grid';
+        this.albumMediaEmpty.style.display = 'none';
+        this.albumMediaGrid.innerHTML = '';
+
+        this.currentAlbum.media.forEach((media, index) => {
+            const mediaItem = this.createAlbumMediaItem(media, index);
+            this.albumMediaGrid.appendChild(mediaItem);
+        });
+    }
+
+    createAlbumMediaItem(media, index) {
+        const item = document.createElement('div');
+        item.className = 'album-media-item';
+        item.dataset.mediaId = media.id;
+
+        let content = '';
+        if (media.type === 'image') {
+            content = `<img src="/media/${encodeURIComponent(media.path)}" alt="${media.name}" class="media-thumbnail" loading="lazy">`;
+        } else if (media.type === 'video') {
+            content = `<div class="media-icon">🎥</div>`;
+        }
+
+        const mediaItemDiv = document.createElement('div');
+        mediaItemDiv.className = 'media-item';
+        mediaItemDiv.innerHTML = content + `
+            <div class="media-info-overlay">
+                <div class="media-filename">${media.name}</div>
+            </div>
+            <button class="remove-media-btn" onclick="app.removeMediaFromAlbum(${this.currentAlbum.id}, ${media.id})" title="Remove from album">×</button>
+        `;
+
+        mediaItemDiv.addEventListener('click', () => {
+            // Open media viewer with album media
+            this.openAlbumMediaViewer(index);
+        });
+
+        item.appendChild(mediaItemDiv);
+        return item;
+    }
+
+    async updateAlbum() {
+        if (!this.currentAlbum) return;
+
+        const name = this.editAlbumNameInput.value.trim();
+        const description = this.editAlbumDescriptionInput.value.trim();
+
+        if (!name) {
+            this.showError('Album name is required');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/albums/${this.currentAlbum.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name, description }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.closeAlbumDetailModal();
+                this.loadAlbums();
+                this.showSuccess('Album updated successfully');
+            } else {
+                this.showError(data.error || 'Failed to update album');
+            }
+        } catch (error) {
+            console.error('Error updating album:', error);
+            this.showError('Failed to connect to server');
+        }
+    }
+
+    async deleteAlbum() {
+        if (!this.currentAlbum) return;
+
+        if (!confirm(`Are you sure you want to delete "${this.currentAlbum.name}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/albums/${this.currentAlbum.id}`, {
+                method: 'DELETE',
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.closeAlbumDetailModal();
+                this.loadAlbums();
+                this.showSuccess('Album deleted successfully');
+            } else {
+                this.showError(data.error || 'Failed to delete album');
+            }
+        } catch (error) {
+            console.error('Error deleting album:', error);
+            this.showError('Failed to connect to server');
+        }
+    }
+
+    async removeMediaFromAlbum(albumId, mediaId) {
+        try {
+            const response = await fetch(`/api/albums/${albumId}/media/${mediaId}`, {
+                method: 'DELETE',
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Refresh the album view
+                await this.viewAlbum(albumId);
+                this.loadAlbums();
+                this.showSuccess('Media removed from album');
+            } else {
+                this.showError(data.error || 'Failed to remove media from album');
+            }
+        } catch (error) {
+            console.error('Error removing media from album:', error);
+            this.showError('Failed to connect to server');
+        }
+    }
+
+    showAddMediaModal() {
+        // This will be implemented in Phase 2
+        alert('Add media functionality will be implemented in the next phase. For now, you can scan directories and media will be available for adding to albums.');
+    }
+
+    openAlbumMediaViewer(index) {
+        if (!this.currentAlbum || !this.currentAlbum.media) return;
+
+        // Create a temporary media files array for the album
+        const albumMediaFiles = this.currentAlbum.media.map(media => ({
+            ...media,
+            // Ensure consistent structure with regular media files
+            name: media.name,
+            path: media.path,
+            type: media.type,
+            size: media.size || 0,
+            modified: media.modified || new Date().toISOString(),
+            mimeType: media.mimeType || (media.type === 'image' ? 'image/jpeg' : 'video/mp4')
+        }));
+
+        // Temporarily replace mediaFiles and set current index
+        const originalMediaFiles = this.mediaFiles;
+        const originalCurrentDirectory = this.currentDirectory;
+        
+        this.mediaFiles = albumMediaFiles;
+        this.currentIndex = index;
+        
+        // Open the viewer
+        this.openMediaViewer(index);
+        
+        // Restore original media files when viewer closes (with a small delay)
+        const originalCloseViewer = this.closeViewer.bind(this);
+        this.closeViewer = () => {
+            this.mediaFiles = originalMediaFiles;
+            this.currentDirectory = originalCurrentDirectory;
+            this.closeViewer = originalCloseViewer;
+            originalCloseViewer();
+        };
+    }
+
+    showSuccess(message) {
+        // Create a temporary success message
+        const successDiv = document.createElement('div');
+        successDiv.className = 'error-message';
+        successDiv.style.backgroundColor = '#10b981';
+        successDiv.style.borderColor = '#10b981';
+        successDiv.innerHTML = `
+            <span class="error-icon">✅</span>
+            <span class="error-text">${message}</span>
+            <button class="error-close" onclick="this.parentElement.remove()">×</button>
+        `;
+        
+        const mainContent = document.querySelector('.main-content');
+        mainContent.insertBefore(successDiv, mainContent.firstChild);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            if (successDiv.parentElement) {
+                successDiv.remove();
+            }
+        }, 3000);
+    }
 }
 
 // Global function for closing error message
@@ -769,7 +1214,17 @@ function closeDirectoryBrowser() {
     document.getElementById('directory-browser-modal').style.display = 'none';
 }
 
+// Global functions for modal closing
+function closeCreateAlbumModal() {
+    document.getElementById('create-album-modal').style.display = 'none';
+}
+
+function closeAlbumDetailModal() {
+    document.getElementById('album-detail-modal').style.display = 'none';
+}
+
 // Initialize the application when DOM is loaded
+let app;
 document.addEventListener('DOMContentLoaded', () => {
-    new PersonalGalery();
+    app = new PersonalGalery();
 });

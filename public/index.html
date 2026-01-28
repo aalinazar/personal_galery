@@ -24,8 +24,16 @@
 
     <!-- Main Content -->
     <main class="main-content">
-        <!-- Directory Selection -->
-        <section class="directory-section">
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button id="media-tab" class="nav-tab active" data-tab="media">📁 Media Browser</button>
+            <button id="albums-tab" class="nav-tab" data-tab="albums">📚 Albums</button>
+        </div>
+
+        <!-- Media Browser Section -->
+        <section id="media-section" class="tab-content active">
+            <!-- Directory Selection -->
+            <section class="directory-section">
             <div class="directory-input-group">
                 <label for="directory-input" class="directory-label">
                     📁 Select Directory
@@ -87,6 +95,30 @@
                 <div class="empty-icon">📷</div>
                 <h2>No Media Found</h2>
                 <p>Select a directory containing images or videos to get started.</p>
+            </div>
+        </section>
+        </section>
+
+        <!-- Albums Section -->
+        <section id="albums-section" class="tab-content">
+            <div class="albums-header">
+                <div class="albums-info">
+                    <h2>📚 My Albums</h2>
+                    <p id="albums-count">Loading albums...</p>
+                </div>
+                <button id="create-album-btn" class="btn btn-primary">➕ Create Album</button>
+            </div>
+
+            <!-- Albums Grid -->
+            <div id="albums-grid" class="albums-grid">
+                <!-- Albums will be dynamically added here -->
+            </div>
+
+            <!-- Albums Empty State -->
+            <div id="albums-empty-state" class="empty-state" style="display: none;">
+                <div class="empty-icon">📚</div>
+                <h2>No Albums Yet</h2>
+                <p>Create your first album to start organizing your media collection.</p>
             </div>
         </section>
     </main>
@@ -169,6 +201,74 @@
             <div class="modal-footer">
                 <button id="select-directory-btn" class="btn btn-primary">Select This Directory</button>
                 <button class="btn btn-secondary" onclick="closeDirectoryBrowser()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Album Modal -->
+    <div id="create-album-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New Album</h2>
+                <button class="modal-close" onclick="closeCreateAlbumModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="album-name" class="form-label">Album Name *</label>
+                    <input type="text" id="album-name" class="form-input" placeholder="Enter album name..." maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="album-description" class="form-label">Description</label>
+                    <textarea id="album-description" class="form-textarea" placeholder="Enter album description (optional)..." rows="3" maxlength="500"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-album-btn" class="btn btn-primary">Create Album</button>
+                <button class="btn btn-secondary" onclick="closeCreateAlbumModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Album Detail Modal -->
+    <div id="album-detail-modal" class="modal album-detail-modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="album-detail-title">Album Details</h2>
+                <button class="modal-close" onclick="closeAlbumDetailModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="album-info-section">
+                    <div class="album-meta">
+                        <div class="form-group">
+                            <label for="edit-album-name" class="form-label">Album Name</label>
+                            <input type="text" id="edit-album-name" class="form-input" maxlength="100">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-album-description" class="form-label">Description</label>
+                            <textarea id="edit-album-description" class="form-textarea" rows="3" maxlength="500"></textarea>
+                        </div>
+                        <div class="album-stats">
+                            <span class="stat-item" id="album-media-count">0 media items</span>
+                            <span class="stat-item" id="album-created-date">Created: Never</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="album-media-section">
+                    <h3>Media in Album</h3>
+                    <div id="album-media-grid" class="media-grid">
+                        <!-- Album media will be displayed here -->
+                    </div>
+                    <div id="album-media-empty" class="empty-state" style="display: none;">
+                        <div class="empty-icon">📷</div>
+                        <p>No media in this album yet.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="update-album-btn" class="btn btn-primary">Save Changes</button>
+                <button id="add-media-to-album-btn" class="btn btn-secondary">➕ Add Media</button>
+                <button id="delete-album-btn" class="btn btn-danger">🗑️ Delete Album</button>
+                <button class="btn btn-secondary" onclick="closeAlbumDetailModal()">Close</button>
             </div>
         </div>
     </div>
