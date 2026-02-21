@@ -14,6 +14,7 @@ const scanRoutes = require('./routes/scan');
 const albumRoutes = require('./routes/albums');
 const metadataRoutes = require('./routes/metadata');
 const filesystemRoutes = require('./routes/filesystem');
+const mediaRoutes = require('./routes/media');
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use('/api', scanRoutes);
 app.use('/api/albums', albumRoutes);
 app.use('/api', metadataRoutes);
 app.use('/api', filesystemRoutes);
+app.use('/api/media', mediaRoutes);
 
 // Serve static files from user-selected directories
 app.get('/media/*', (req, res) => {

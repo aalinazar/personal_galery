@@ -303,6 +303,67 @@ body {
   justify-content: center;
 }
 
+/* Selection Controls Bar */
+.selection-controls-bar {
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: var(--radius);
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  box-shadow: var(--shadow-md);
+}
+
+.selection-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.selection-count {
+  font-weight: 600;
+}
+
+.selection-info .btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.selection-info .btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.selection-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.selection-actions .btn-primary {
+  background-color: white;
+  color: var(--primary-color);
+}
+
+.selection-actions .btn-primary:hover {
+  background-color: var(--surface-color);
+}
+
+.selection-actions .btn-secondary {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.selection-actions .btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
 /* Media Info Bar */
 .media-info-bar {
   background-color: var(--surface-color);
@@ -383,6 +444,130 @@ body {
 .media-item.active {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgb(99 102 241 / 0.2);
+}
+
+/* Media Selection States */
+.media-item.selection-mode {
+  cursor: pointer;
+  position: relative;
+}
+
+.media-item.selection-mode::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(99, 102, 241, 0.1);
+  opacity: 0;
+  transition: var(--transition);
+  pointer-events: none;
+}
+
+.media-item.selection-mode:hover::before {
+  opacity: 1;
+}
+
+.media-item.selected {
+  border-color: var(--primary-color);
+  border-width: 3px;
+  box-shadow: 0 0 0 2px rgb(99 102 241 / 0.2);
+}
+
+.media-item.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  background-color: var(--primary-color);
+  color: white;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.9rem;
+  z-index: 10;
+  box-shadow: var(--shadow-md);
+}
+
+/* Selection mode overlay */
+.media-item.selection-overlay {
+  position: relative;
+}
+
+.media-item.selection-overlay .selection-checkbox {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 2px solid var(--border-color);
+  border-radius: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: var(--transition);
+}
+
+.media-item.selection-overlay .selection-checkbox:hover {
+  background-color: white;
+  border-color: var(--primary-color);
+}
+
+.media-item.selection-overlay.selected .selection-checkbox {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.media-item.selection-overlay.selected .selection-checkbox::after {
+  content: '✓';
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+/* List view selection adjustments */
+.media-grid.list-view .media-item.selection-overlay .selection-checkbox {
+  top: 50%;
+  left: 0.75rem;
+  transform: translateY(-50%);
+}
+
+.media-grid.list-view .media-item.selected {
+  border-width: 2px;
+}
+
+.media-grid.list-view .media-item.selected::after {
+  display: none; /* Hide the circle checkmark in list view, use checkbox instead */
+}
+
+/* Selection Summary */
+.selection-summary {
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.selection-summary p {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+/* Small button variant */
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
 }
 
 .media-thumbnail {

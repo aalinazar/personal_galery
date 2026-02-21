@@ -11,6 +11,10 @@ class PersonalGalery {
         this.currentAlbum = null;
         this.albums = [];
         
+        // Selection state
+        this.isSelectionMode = false;
+        this.selectedMedia = new Set(); // Store selected media paths
+        
         this.initializeElements();
         this.bindEvents();
         this.initializeTheme();
@@ -98,6 +102,22 @@ class PersonalGalery {
         this.albumCreatedDate = document.getElementById('album-created-date');
         this.albumMediaGrid = document.getElementById('album-media-grid');
         this.albumMediaEmpty = document.getElementById('album-media-empty');
+        
+        // Selection controls
+        this.selectionControlsBar = document.getElementById('selection-controls-bar');
+        this.selectionCount = document.getElementById('selection-count');
+        this.selectAllBtn = document.getElementById('select-all-btn');
+        this.clearSelectionBtn = document.getElementById('clear-selection-btn');
+        this.addToAlbumBtn = document.getElementById('add-to-album-btn');
+        this.cancelSelectionBtn = document.getElementById('cancel-selection-btn');
+        this.selectionModeBtn = document.getElementById('selection-mode-btn');
+        
+        // Add to album modal
+        this.addToAlbumModal = document.getElementById('add-to-album-modal');
+        this.albumSelect = document.getElementById('album-select');
+        this.selectedMediaCount = document.getElementById('selected-media-count');
+        this.createNewAlbumBtn = document.getElementById('create-new-album-btn');
+        this.confirmAddToAlbumBtn = document.getElementById('confirm-add-to-album-btn');
     }
 
     bindEvents() {
@@ -175,6 +195,25 @@ class PersonalGalery {
         // Form validation
         this.albumNameInput.addEventListener('input', () => this.validateAlbumForm());
         this.editAlbumNameInput.addEventListener('input', () => this.validateAlbumForm());
+        
+        // Selection mode controls
+        this.selectionModeBtn.addEventListener('click', () => this.toggleSelectionMode());
+        this.selectAllBtn.addEventListener('click', () => this.selectAll());
+        this.clearSelectionBtn.addEventListener('click', () => this.clearSelection());
+        this.addToAlbumBtn.addEventListener('click', () => this.showAddToAlbumModal());
+        this.cancelSelectionBtn.addEventListener('click', () => this.exitSelectionMode());
+        
+        // Add to album modal controls
+        this.albumSelect.addEventListener('change', () => this.validateAddToAlbumForm());
+        this.createNewAlbumBtn.addEventListener('click', () => this.showCreateAlbumFromSelection());
+        this.confirmAddToAlbumBtn.addEventListener('click', () => this.addSelectedMediaToAlbum());
+        
+        // Add to album modal close events
+        this.addToAlbumModal.addEventListener('click', (e) => {
+            if (e.target === this.addToAlbumModal) {
+                this.closeAddToAlbumModal();
+            }
+        });
     }
 
     initializeTheme() {
@@ -1175,6 +1214,284 @@ class PersonalGalery {
         };
     }
 
+    // Media Selection Methods
+    toggleSelectionMode() {
+        this.isSelectionMode = !this.isSelectionMode;
+        
+        if (this.isSelectionMode) {
+            this.enterSelectionMode();
+        } else {
+            this.exitSelectionMode();
+        }
+    }
+
+    enterSelectionMode() {
+        this.isSelectionMode = true;
+        this.selectionModeBtn.textContent = '👁️ View Mode';
+        this.selectionModeBtn.classList.add('active');
+        
+        // Show selection controls bar
+        this.selectionControlsBar.style.display = 'flex';
+        
+        // Hide regular media info bar
+        this.mediaInfoBar.style.display = 'none';
+        
+        // Update all media items to show selection checkboxes
+        this.updateMediaItemsForSelection();
+        
+        // Clear any existing selection
+        this.clearSelection();
+    }
+
+    exitSelectionMode() {
+        this.isSelectionMode = false;
+        this.selectionModeBtn.textContent = '☑️ Select Media';
+        this.selectionModeBtn.classList.remove('active');
+        
+        // Hide selection controls bar
+        this.selectionControlsBar.style.display = 'none';
+        
+        // Show regular media info bar if we have media
+        if (this.mediaFiles.length > 0) {
+            this.mediaInfoBar.style.display = 'flex';
+        }
+        
+        // Remove selection styling from media items
+        this.updateMediaItemsForSelection();
+        
+        // Clear selection
+        this.clearSelection();
+    }
+
+    updateMediaItemsForSelection() {
+        const mediaItems = document.querySelectorAll('.media-item');
+        
+        mediaItems.forEach(item => {
+            if (this.isSelectionMode) {
+                item.classList.add('selection-overlay');
+                
+                // Add checkbox if it doesn't exist
+                if (!item.querySelector('.selection-checkbox')) {
+                    const checkbox = document.createElement('div');
+                    checkbox.className = 'selection-checkbox';
+                    checkbox.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.toggleMediaSelection(item.dataset.filePath);
+                    });
+                    item.insertBefore(checkbox, item.firstChild);
+                }
+                
+                // Update click handler for selection
+                const clickHandler = (e) => {
+                    if (!e.target.classList.contains('selection-checkbox')) {
+                        this.toggleMediaSelection(item.dataset.filePath);
+                    }
+                };
+                
+                // Remove existing click handler if any
+                item.removeEventListener('click', item._selectionClickHandler);
+                item._selectionClickHandler = clickHandler;
+                item.addEventListener('click', clickHandler);
+                
+                // Update selected state
+                if (this.selectedMedia.has(item.dataset.filePath)) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            } else {
+                item.classList.remove('selection-overlay', 'selected');
+                
+                // Remove checkbox
+                const checkbox = item.querySelector('.selection-checkbox');
+                if (checkbox) {
+                    checkbox.remove();
+                }
+                
+                // Remove selection click handler
+                if (item._selectionClickHandler) {
+                    item.removeEventListener('click', item._selectionClickHandler);
+                    delete item._selectionClickHandler;
+                }
+            }
+        });
+    }
+
+    toggleMediaSelection(filePath) {
+        if (this.selectedMedia.has(filePath)) {
+            this.selectedMedia.delete(filePath);
+        } else {
+            this.selectedMedia.add(filePath);
+        }
+        
+        this.updateSelectionUI();
+    }
+
+    selectAll() {
+        const mediaItems = document.querySelectorAll('.media-item');
+        mediaItems.forEach(item => {
+            if (item.dataset.filePath) {
+                this.selectedMedia.add(item.dataset.filePath);
+            }
+        });
+        
+        this.updateSelectionUI();
+    }
+
+    clearSelection() {
+        this.selectedMedia.clear();
+        this.updateSelectionUI();
+    }
+
+    updateSelectionUI() {
+        // Update selection count
+        const count = this.selectedMedia.size;
+        this.selectionCount.textContent = `${count} item${count !== 1 ? 's' : ''} selected`;
+        
+        // Update add to album button state
+        this.addToAlbumBtn.disabled = count === 0;
+        
+        // Update media item visual states
+        const mediaItems = document.querySelectorAll('.media-item');
+        mediaItems.forEach(item => {
+            if (this.selectedMedia.has(item.dataset.filePath)) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    async showAddToAlbumModal() {
+        if (this.selectedMedia.size === 0) {
+            this.showError('No media selected');
+            return;
+        }
+        
+        // Update selected media count
+        this.selectedMediaCount.textContent = this.selectedMedia.size;
+        
+        // Load albums for selection
+        await this.loadAlbumsForSelection();
+        
+        // Show modal
+        this.addToAlbumModal.style.display = 'flex';
+        
+        // Reset form
+        this.albumSelect.value = '';
+        this.validateAddToAlbumForm();
+    }
+
+    async loadAlbumsForSelection() {
+        try {
+            const response = await fetch('/api/albums');
+            const data = await response.json();
+
+            if (data.success) {
+                this.albumSelect.innerHTML = '<option value="">Choose an album...</option>';
+                
+                data.albums.forEach(album => {
+                    const option = document.createElement('option');
+                    option.value = album.id;
+                    option.textContent = album.name;
+                    this.albumSelect.appendChild(option);
+                });
+            } else {
+                this.showError('Failed to load albums');
+            }
+        } catch (error) {
+            console.error('Error loading albums:', error);
+            this.showError('Failed to connect to server');
+        }
+    }
+
+    validateAddToAlbumForm() {
+        const albumSelected = this.albumSelect.value !== '';
+        this.confirmAddToAlbumBtn.disabled = !albumSelected;
+    }
+
+    showCreateAlbumFromSelection() {
+        // Close add to album modal
+        this.closeAddToAlbumModal();
+        
+        // Show create album modal
+        this.showCreateAlbumModal();
+        
+        // Set up to return to selection after album creation
+        this.returnToSelectionAfterCreate = true;
+    }
+
+    async addSelectedMediaToAlbum() {
+        const albumId = this.albumSelect.value;
+        
+        if (!albumId) {
+            this.showError('Please select an album');
+            return;
+        }
+        
+        try {
+            // First, we need to get the media IDs for the selected file paths
+            const mediaIds = await this.getMediaIdsForPaths(Array.from(this.selectedMedia));
+            
+            if (mediaIds.length === 0) {
+                this.showError('No valid media found');
+                return;
+            }
+            
+            // Add media to album
+            const response = await fetch(`/api/albums/${albumId}/media`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ mediaIds }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.closeAddToAlbumModal();
+                this.exitSelectionMode();
+                this.showSuccess(`Added ${data.addedCount} media items to album`);
+                this.loadAlbums(); // Refresh albums
+            } else {
+                this.showError(data.error || 'Failed to add media to album');
+            }
+        } catch (error) {
+            console.error('Error adding media to album:', error);
+            this.showError('Failed to connect to server');
+        }
+    }
+
+    async getMediaIdsForPaths(filePaths) {
+        try {
+            // Get all media files from database
+            const response = await fetch('/api/media/files');
+            const data = await response.json();
+            
+            if (!data.success) {
+                return [];
+            }
+            
+            // Find media IDs for the selected file paths
+            const mediaIds = [];
+            data.files.forEach(media => {
+                if (filePaths.includes(media.path)) {
+                    mediaIds.push(media.id);
+                }
+            });
+            
+            return mediaIds;
+        } catch (error) {
+            console.error('Error getting media IDs:', error);
+            return [];
+        }
+    }
+
+    closeAddToAlbumModal() {
+        this.addToAlbumModal.style.display = 'none';
+    }
+
     showSuccess(message) {
         // Create a temporary success message
         const successDiv = document.createElement('div');
@@ -1221,6 +1538,10 @@ function closeCreateAlbumModal() {
 
 function closeAlbumDetailModal() {
     document.getElementById('album-detail-modal').style.display = 'none';
+}
+
+function closeAddToAlbumModal() {
+    document.getElementById('add-to-album-modal').style.display = 'none';
 }
 
 // Initialize the application when DOM is loaded
